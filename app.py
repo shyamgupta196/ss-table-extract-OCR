@@ -1,12 +1,12 @@
 import detectron2
 import main.google_colab.deskew as deskew
 import main.google_colab.table_detection as table_detection
-import main.google_colab.table_structure_recognition_all as tsra
-import main.google_colab.table_structure_recognition_lines as tsrl
-import main.google_colab.table_structure_recognition_wol as tsrwol
+# import main.google_colab.table_structure_recognition_all as tsra
+# import main.google_colab.table_structure_recognition_lines as tsrl
+# import main.google_colab.table_structure_recognition_wol as tsrwol
 import main.google_colab.table_structure_recognition_lines_wol as tsrlwol
-import main.google_colab.table_xml as txml
-import main.google_colab.table_ocr as tocr
+# import main.google_colab.table_xml as txml
+# import main.google_colab.table_ocr as tocr
 import pandas as pd
 import os
 import json
@@ -18,7 +18,6 @@ from detectron2.utils.logger import setup_logger
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 from PIL import Image
 
 # import some common detectron2 utilities
@@ -28,9 +27,10 @@ from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog
 from detectron2.data import DatasetCatalog, MetadataCatalog
-import pytesseract
+# import pytesseract
+import easyocr
 
-pytesseract.pytesseract.tesseract_cmd = "C:/Program Files/Tesseract-OCR/tesseract.exe"
+# pytesseract.pytesseract.tesseract_cmd = "C:/Program Files/Tesseract-OCR/tesseract.exe"
 
 # from google.colab.patches import cv2_imshow
 setup_logger()
@@ -45,14 +45,9 @@ cfg.merge_from_file("main/All_X152.yaml")
 cfg.MODEL.WEIGHTS = "main/model_final.pth"  # Set path model .pth
 
 predictor = DefaultPredictor(cfg)
+reader = easyocr.Reader(['en'])
 
-
-model_version = "microsoft/trocr-base-printed"
-processor = TrOCRProcessor.from_pretrained(model_version)
-model = VisionEncoderDecoderModel.from_pretrained(model_version)
-
-document_example = cv2.imread("main\extracted_tables\image_0.png")
-# cv2.imshow('img',document_example)
+document_example = cv2.imread("extracted_tables\image_0.png")
 
 table_list, table_coords,_ = table_detection.make_prediction(document_example, predictor)
 list_table_boxes = []
@@ -78,29 +73,27 @@ for table in table_list:
                     resizing = cv2.resize(border, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
                     dilation = cv2.dilate(resizing, kernel, iterations=1)
                     erosion = cv2.erode(dilation, kernel, iterations=2)
-
-                    if(erosion.sum() != erosion.shape[0]*erosion.shape[1]*255):
-                        import IPython;IPython.embed();exit(1)
-                        pixel_values = processor(erosion.reshape(*erosion.shape,1), return_tensors="pt").pixel_values
-                        generated_ids = model.generate(pixel_values)
-                        extract_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-                        print(extract_text)
+                    try:
+                        if(erosion.sum() != erosion.shape[0]*erosion.shape[1]*255):
+                            out = reader.readtext(finalimg)[0][1]
+                            print(out)
 
 
-                    else:
-                        out = ""
-
-                    if(out == ""):
-                        pixel_values = processor(erosion, return_tensors="pt").pixel_values
-                        generated_ids = model.generate(pixel_values)
-                        extract_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-                        print(extract_text)
-
-
-                        if(len(out[:-2]) >1):
+                        else:
                             out = ""
 
-                    inner = inner + " " + out[:-2]
+                        if(out == ""):
+                            out = reader.readtext(finalimg)[0][1]
+                            print(out)
+
+
+                            if(len(out[:-2]) >1):
+                                out = ""
+                    except Exception as e:
+                        print(e)
+                        out = 'N/A'
+                        # import IPython;IPython.embed();exit(1)
+                    inner = inner + " " + out + ' '
                 outer.append(inner)
 
 # Creating a dataframe of the generated OCR list
@@ -109,7 +102,7 @@ dataframe = pd.DataFrame(arr.reshape(len(finalboxes), len(finalboxes[0])))
 print(dataframe)
 data = dataframe.style.set_properties(align="left")
 # Converting dataframe into an excel-file
-data.to_excel("output.xlsx")
+data.to_excel("output1.xlsx")
     
 
 # ! pip install transformers

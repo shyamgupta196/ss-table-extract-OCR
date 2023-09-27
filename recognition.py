@@ -157,7 +157,6 @@ def main():
                     file.close()
 
                 else:
-                    print(" not detecting full")
                     table_list, table_coords, fnames = table_detection.make_prediction(
                         document_img, predictor, args.show_results
                     )

@@ -52,3 +52,16 @@ if __name__=='__main__':
     # detect_table()
     TableOCR()
 
+## psuedocode
+# read output.xlsx
+# take x_max
+# In [7]: differences = np.diff(df['x_max'])
+#In [10]: indices = np.where(-differences > 500)[0]
+# In [11]: indices
+# df.iloc[indices,:]
+# In [17]: df['Text']
+# In [19]: df['Text'].iloc[indices+1]
+# In [20]: df['Text'].iloc[indices]
+# In [22]: data = df['x_max'].values
+# In [30]: subarrays = np.split(data, indices + 1)
+# In [32]: pd.DataFrame(subarrays)

@@ -267,35 +267,53 @@ result = [
         ],
     },
 ]
+
+def make_excel(result, output_path:str = '.', filename:str = 'output.xlsx'):
 # Create a new Excel workbook
-workbook = openpyxl.Workbook()
-worksheet = workbook.active
+    import os
+    import pandas as pd
+    import numpy as np
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
 
-# Add headers for the columns
-worksheet.cell(row=1, column=1, value="Text")
-worksheet.cell(row=1, column=2, value="Confidence")
-worksheet.cell(row=1, column=3, value="x_min")
-worksheet.cell(row=1, column=4, value="y_min")
-worksheet.cell(row=1, column=5, value="x_max")
-worksheet.cell(row=1, column=6, value="y_max")
+    # Add headers for the columns
+    worksheet.cell(row=1, column=1, value="Text")
+    worksheet.cell(row=1, column=2, value="Confidence")
+    worksheet.cell(row=1, column=3, value="x_min")
+    worksheet.cell(row=1, column=4, value="y_min")
+    worksheet.cell(row=1, column=5, value="x_max")
+    worksheet.cell(row=1, column=6, value="y_max")
 
-# Iterate through the dictionary and insert data into the worksheet
-for idx, data in enumerate(result, start=2):
-    text = data["text"]
-    confidence = data["confidence"]
-    text_region = data["text_region"]
+    # Iterate through the dictionary and insert data into the worksheet
+    for idx, data in enumerate(result, start=2):
+        text = data["text"]
+        confidence = data["confidence"]
+        text_region = data["text_region"]
 
-    x_min = min(point[0] for point in text_region)
-    y_min = min(point[1] for point in text_region)
-    x_max = max(point[0] for point in text_region)
-    y_max = max(point[1] for point in text_region)
+        x_min = min(point[0] for point in text_region)
+        y_min = min(point[1] for point in text_region)
+        x_max = max(point[0] for point in text_region)
+        y_max = max(point[1] for point in text_region)
 
-    worksheet.cell(row=idx, column=1, value=text)
-    worksheet.cell(row=idx, column=2, value=confidence)
-    worksheet.cell(row=idx, column=3, value=x_min)
-    worksheet.cell(row=idx, column=4, value=y_min)
-    worksheet.cell(row=idx, column=5, value=x_max)
-    worksheet.cell(row=idx, column=6, value=y_max)
+        worksheet.cell(row=idx, column=1, value=text)
+        worksheet.cell(row=idx, column=2, value=confidence)
+        worksheet.cell(row=idx, column=3, value=x_min)
+        worksheet.cell(row=idx, column=4, value=y_min)
+        worksheet.cell(row=idx, column=5, value=x_max)
+        worksheet.cell(row=idx, column=6, value=y_max)
 
-# Save the workbook to a file
-workbook.save("output.xlsx")
+    df = pd.DataFrame(workbook.active.values)
+    df.columns = df.iloc[0]
+    differences = np.diff(df['x_max'])
+    indices = np.where(-differences > 500)[0]
+    print(df.iloc[indices,:])
+    df['Text'].iloc[indices+1]
+    df['Text'].iloc[indices]
+    data = df['x_max'].values
+    subarrays = np.split(data, indices + 1)
+    new_df = pd.DataFrame(subarrays)
+    new_df.to_excel(output_path, filename.split('.')[0]+'s.xlsx')
+    new_df.to_html(os.path.join(output_path, filename.split('.')[0]+'s.html'))
+
+if __name__ == '__main__':
+    make_excel(result)

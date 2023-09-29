@@ -10,6 +10,24 @@ parser = argparse.ArgumentParser(
     description="Detect table and using OCR store it in excel file."
 )
 
+
+parser.add_argument(
+    "--ss_folder",
+    default="screenshot",
+    type=str,
+    required=False,
+    help="path to input folder",
+)
+
+parser.add_argument(
+    "--ss_output_txt",
+    default="tables",
+    type=str,
+    required=False,
+    help="path to input folder",
+)
+
+
 parser.add_argument(
     "--input_folder",
     default="extracted_tables",
@@ -29,7 +47,7 @@ args = parser.parse_args()
 
 
 def detect_table():
-    os.system("python recognition.py --input_folder screenshot --output_folder tables")
+    os.system(f"python recognition.py --input_folder {args.ss_folder} --output_folder {args.ss_output_txt}")
 
 
 def TableOCR():

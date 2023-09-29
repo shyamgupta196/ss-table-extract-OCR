@@ -1,7 +1,7 @@
-import os 
+import os
 import argparse
 import cv2
-from paddleocr import PPStructure,draw_structure_result,save_structure_res
+from paddleocr import PPStructure, draw_structure_result, save_structure_res
 from excel_output import make_excel
 import openpyxl
 import numpy as np
@@ -13,23 +13,25 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument(
     "--input_folder",
-    default= 'extracted_tables',
+    default="extracted_tables",
     type=str,
     required=False,
-    help="path to input folder"
+    help="path to input folder",
 )
 parser.add_argument(
     "--save_folder",
-    default= r'.\output_excels',
+    default=r".\output_excels",
     type=str,
     required=False,
-    help="path to save folder for excel and bboxes"
+    help="path to save folder for excel and bboxes",
 )
 
 args = parser.parse_args()
 
+
 def detect_table():
-    os.system('python recognition.py --input_folder screenshot --output_folder tables')
+    os.system("python recognition.py --input_folder screenshot --output_folder tables")
+
 
 def TableOCR():
     for filename in os.listdir(args.input_folder):
@@ -37,12 +39,32 @@ def TableOCR():
             path = os.path.join(args.input_folder, filename)
             img = cv2.imread(path)
             result = table_engine(img)
-            save_structure_res(result, args.save_folder,os.path.basename(path).split('.')[0])
+            save_structure_res(
+                result, args.save_folder, os.path.basename(path).split(".")[0]
+            )
+            os.makedirs(
+                os.path.join(args.save_folder, os.path.basename(path).split(".")[0]),
+                exist_ok=True,
+            )
             try:
-                pathhtml = os.path.join(args.save_folder,filename.split('.')[0],filename.split('.')[0]+'.html')
-                file = open(pathhtml,'w',encoding='utf-8')
-                file.write(result[0]['res']['html'])
-                file.close()
+                pathhtml = os.path.join(
+                    args.save_folder,
+                    filename.split(".")[0],
+                    filename.split(".")[0] + ".html",
+                )
+                pathexcel = os.path.join(
+                    args.save_folder,
+                    filename.split(".")[0],
+                    filename.split(".")[0] + ".xlsx",
+                )
+                # import IPython; IPython.embed();exit()
+                html_content = result[0]["res"]["html"]
+                df = pd.read_html(html_content)
+                df = df[0]
+                df.columns = df.iloc[0]
+                df = df[1:]
+                df.to_html(pathhtml)
+                df.to_excel(pathexcel)
             except Exception as e:
                 print(e)
                 workbook = openpyxl.Workbook()
@@ -57,7 +79,7 @@ def TableOCR():
                 worksheet.cell(row=1, column=6, value="y_max")
 
                 # Iterate through the dictionary and insert data into the worksheet
-                for idx, data in enumerate(result[0]['res'], start=2):
+                for idx, data in enumerate(result[0]["res"], start=2):
                     text = data["text"]
                     confidence = data["confidence"]
                     text_region = data["text_region"]
@@ -77,31 +99,44 @@ def TableOCR():
                 df = pd.DataFrame(workbook.active.values)
                 df.columns = df.iloc[0]
                 df = df[1:]
-                differences = np.diff(df['x_max'])
+                differences = np.diff(df["x_max"])
                 indices = np.where(-differences > 500)[0]
-                print(df.iloc[indices,:])
-                df['Text'].iloc[indices+1]
-                df['Text'].iloc[indices]
-                data = df['Text'].values
+                print(df.iloc[indices, :])
+                df["Text"].iloc[indices + 1]
+                data = df["Text"].values
                 subarrays = np.split(data, indices + 1)
                 new_df = pd.DataFrame(subarrays)
-                # import IPython; IPython.embed();exit()
-                new_df.to_excel(os.path.join(args.save_folder,os.path.basename(path).split('.')[0], filename.split('.')[0]+'s.xlsx'))
-                new_df.to_html(os.path.join(args.save_folder, os.path.basename(path).split('.')[0], filename.split('.')[0]+'.html'))
+                new_df.columns = new_df.iloc[0]
+                new_df = new_df[1:]
+                new_df.to_excel(
+                    os.path.join(
+                        args.save_folder,
+                        os.path.basename(path).split(".")[0],
+                        filename.split(".")[0] + ".xlsx",
+                    )
+                )
+                new_df.to_html(
+                    os.path.join(
+                        args.save_folder,
+                        os.path.basename(path).split(".")[0],
+                        filename.split(".")[0] + ".html",
+                    )
+                )
                 continue
 
 
-
-if __name__=='__main__':
-    table_engine = PPStructure(show_log=True,det_db_box_thresh=0.3,det_pse_box_thresh=0.3)
-    # detect_table()
+if __name__ == "__main__":
+    table_engine = PPStructure(
+        show_log=True, det_db_box_thresh=0.3, det_pse_box_thresh=0.3
+    )
+    detect_table()
     TableOCR()
 
 ## psuedocode
 # read output.xlsx
 # take x_max
 # In [7]: differences = np.diff(df['x_max'])
-#In [10]: indices = np.where(-differences > 500)[0]
+# In [10]: indices = np.where(-differences > 500)[0]
 # In [11]: indices
 # df.iloc[indices,:]
 # In [17]: df['Text']

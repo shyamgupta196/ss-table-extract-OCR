@@ -2,7 +2,6 @@ import os
 import argparse
 import cv2
 from paddleocr import PPStructure, draw_structure_result, save_structure_res
-from excel_output import make_excel
 import openpyxl
 import numpy as np
 import pandas as pd
@@ -35,94 +34,100 @@ def detect_table():
 
 def TableOCR():
     for filename in os.listdir(args.input_folder):
-        if filename.endswith((".jpg", ".png", ".jpeg")):
-            path = os.path.join(args.input_folder, filename)
-            img = cv2.imread(path)
-            result = table_engine(img)
-            save_structure_res(
-                result, args.save_folder, os.path.basename(path).split(".")[0]
-            )
-            os.makedirs(
-                os.path.join(args.save_folder, os.path.basename(path).split(".")[0]),
-                exist_ok=True,
-            )
-            try:
-                pathhtml = os.path.join(
-                    args.save_folder,
-                    filename.split(".")[0],
-                    filename.split(".")[0] + ".html",
+        try:
+            if filename.endswith((".jpg", ".png", ".jpeg")):
+                path = os.path.join(args.input_folder, filename)
+                img = cv2.imread(path)
+                result = table_engine(img)
+                save_structure_res(
+                    result, args.save_folder, os.path.basename(path).split(".")[0]
                 )
-                pathexcel = os.path.join(
-                    args.save_folder,
-                    filename.split(".")[0],
-                    filename.split(".")[0] + ".xlsx",
-                )
-                # import IPython; IPython.embed();exit()
-                html_content = result[0]["res"]["html"]
-                df = pd.read_html(html_content)
-                df = df[0]
-                df.columns = df.iloc[0]
-                df = df[1:]
-                df.to_html(pathhtml)
-                df.to_excel(pathexcel)
-            except Exception as e:
-                print(e)
-                workbook = openpyxl.Workbook()
-                worksheet = workbook.active
-
-                # Add headers for the columns
-                worksheet.cell(row=1, column=1, value="Text")
-                worksheet.cell(row=1, column=2, value="Confidence")
-                worksheet.cell(row=1, column=3, value="x_min")
-                worksheet.cell(row=1, column=4, value="y_min")
-                worksheet.cell(row=1, column=5, value="x_max")
-                worksheet.cell(row=1, column=6, value="y_max")
-
-                # Iterate through the dictionary and insert data into the worksheet
-                for idx, data in enumerate(result[0]["res"], start=2):
-                    text = data["text"]
-                    confidence = data["confidence"]
-                    text_region = data["text_region"]
-
-                    x_min = min(point[0] for point in text_region)
-                    y_min = min(point[1] for point in text_region)
-                    x_max = max(point[0] for point in text_region)
-                    y_max = max(point[1] for point in text_region)
-
-                    worksheet.cell(row=idx, column=1, value=text)
-                    worksheet.cell(row=idx, column=2, value=confidence)
-                    worksheet.cell(row=idx, column=3, value=x_min)
-                    worksheet.cell(row=idx, column=4, value=y_min)
-                    worksheet.cell(row=idx, column=5, value=x_max)
-                    worksheet.cell(row=idx, column=6, value=y_max)
-
-                df = pd.DataFrame(workbook.active.values)
-                df.columns = df.iloc[0]
-                df = df[1:]
-                differences = np.diff(df["x_max"])
-                indices = np.where(-differences > 500)[0]
-                print(df.iloc[indices, :])
-                df["Text"].iloc[indices + 1]
-                data = df["Text"].values
-                subarrays = np.split(data, indices + 1)
-                new_df = pd.DataFrame(subarrays)
-                new_df.columns = new_df.iloc[0]
-                new_df = new_df[1:]
-                new_df.to_excel(
+                os.makedirs(
                     os.path.join(
-                        args.save_folder,
-                        os.path.basename(path).split(".")[0],
-                        filename.split(".")[0] + ".xlsx",
-                    )
+                        args.save_folder, os.path.basename(path).split(".")[0]
+                    ),
+                    exist_ok=True,
                 )
-                new_df.to_html(
-                    os.path.join(
+                try:
+                    pathhtml = os.path.join(
                         args.save_folder,
-                        os.path.basename(path).split(".")[0],
+                        filename.split(".")[0],
                         filename.split(".")[0] + ".html",
                     )
-                )
-                continue
+                    pathexcel = os.path.join(
+                        args.save_folder,
+                        filename.split(".")[0],
+                        filename.split(".")[0] + ".xlsx",
+                    )
+                    # import IPython; IPython.embed();exit()
+                    html_content = result[0]["res"]["html"]
+                    df = pd.read_html(html_content)
+                    df = df[0]
+                    df.columns = df.iloc[0]
+                    df = df[1:]
+                    df.to_html(pathhtml)
+                    df.to_excel(pathexcel)
+                except Exception as e:
+                    print(e)
+                    workbook = openpyxl.Workbook()
+                    worksheet = workbook.active
+
+                    # Add headers for the columns
+                    worksheet.cell(row=1, column=1, value="Text")
+                    worksheet.cell(row=1, column=2, value="Confidence")
+                    worksheet.cell(row=1, column=3, value="x_min")
+                    worksheet.cell(row=1, column=4, value="y_min")
+                    worksheet.cell(row=1, column=5, value="x_max")
+                    worksheet.cell(row=1, column=6, value="y_max")
+
+                    # Iterate through the dictionary and insert data into the worksheet
+                    for idx, data in enumerate(result[0]["res"], start=2):
+                        text = data["text"]
+                        confidence = data["confidence"]
+                        text_region = data["text_region"]
+
+                        x_min = min(point[0] for point in text_region)
+                        y_min = min(point[1] for point in text_region)
+                        x_max = max(point[0] for point in text_region)
+                        y_max = max(point[1] for point in text_region)
+
+                        worksheet.cell(row=idx, column=1, value=text)
+                        worksheet.cell(row=idx, column=2, value=confidence)
+                        worksheet.cell(row=idx, column=3, value=x_min)
+                        worksheet.cell(row=idx, column=4, value=y_min)
+                        worksheet.cell(row=idx, column=5, value=x_max)
+                        worksheet.cell(row=idx, column=6, value=y_max)
+
+                    df = pd.DataFrame(workbook.active.values)
+                    df.columns = df.iloc[0]
+                    df = df[1:]
+                    differences = np.diff(df["x_max"])
+                    indices = np.where(-differences > 500)[0]
+                    print(df.iloc[indices, :])
+                    df["Text"].iloc[indices + 1]
+                    data = df["Text"].values
+                    subarrays = np.split(data, indices + 1)
+                    new_df = pd.DataFrame(subarrays)
+                    new_df.columns = new_df.iloc[0]
+                    new_df = new_df[1:]
+                    new_df.to_excel(
+                        os.path.join(
+                            args.save_folder,
+                            os.path.basename(path).split(".")[0],
+                            filename.split(".")[0] + ".xlsx",
+                        )
+                    )
+                    new_df.to_html(
+                        os.path.join(
+                            args.save_folder,
+                            os.path.basename(path).split(".")[0],
+                            filename.split(".")[0] + ".html",
+                        )
+                    )
+                    continue
+        except Exception as e:
+            print(e)
+            continue
 
 
 if __name__ == "__main__":
